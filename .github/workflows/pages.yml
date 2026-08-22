@@ -19,11 +19,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Enable GitHub Pages
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${{ github.repository }}/pages" \
+            -H "Accept: application/vnd.github+json" \
+            -f build_type=workflow \
+            || true
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-      - uses: actions/configure-pages@v5
       - run: npm ci
       - run: npm run build:pages
       - uses: actions/upload-pages-artifact@v3
