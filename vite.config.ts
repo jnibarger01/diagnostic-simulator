@@ -12,6 +12,10 @@ import { grokPwaPlugin } from "./scripts/grok-pwa-plugin.mjs";
 import { appEnvPlugin } from "./scripts/app-env-plugin.mjs";
 import { isMigrationFile } from "./scripts/migration-plan.mjs";
 
+/** Project-site path on GitHub Pages (`https://<user>.github.io/diagnostic-simulator/`). */
+const PAGES_BASE = "/diagnostic-simulator/";
+const githubPages = process.env.GITHUB_PAGES === "1";
+
 /** The files `src/lib/db.ts` globs — same directory, same non-recursive scope. */
 function hasGlobbedMigrations(root: string): boolean {
   try {
@@ -145,6 +149,8 @@ function authPopupPlugin(): Plugin {
 // `0.0.0.0:8080` is the live-preview contract — don't change host/port.
 // The dev server starts once `src/router.tsx` and `src/routes/` exist — see
 // AGENTS.md § "First scaffold".
+// GitHub Pages is a separate static/SPA export (`GITHUB_PAGES=1`); default
+// build stays Nitro/Vercel so Grok deploy and `vite preview` are unchanged.
 export default defineConfig(({ command, isPreview }) => ({
   server: {
     host: "0.0.0.0",
@@ -156,6 +162,7 @@ export default defineConfig(({ command, isPreview }) => ({
     port: 8081,
     strictPort: true,
   },
+  ...(githubPages ? { base: PAGES_BASE } : {}),
   resolve: { tsconfigPaths: true },
   plugins: [
     pgliteBootstrapPlugin(),
@@ -166,17 +173,26 @@ export default defineConfig(({ command, isPreview }) => ({
     // PWA head + ?install=1 tutorial page; runs before Start/Nitro.
     grokPwaPlugin(),
     tailwindcss(),
-    tanstackStart(),
+    tanstackStart(
+      githubPages
+        ? {
+            spa: { enabled: true },
+            router: { basepath: "/diagnostic-simulator" },
+          }
+        : undefined,
+    ),
     ...(command === "build" || isPreview
-      ? [
-          nitro({
-            preset: "vercel",
-            // Auto-registers server/middleware/* (the PWA install page +
-            // manifest + head-tag middleware). Nitro v3 defaults serverDir to
-            // false, so removing this silently unwires /?install=1 on deploys.
-            serverDir: "./server",
-          }),
-        ]
+      ? githubPages
+        ? []
+        : [
+            nitro({
+              preset: "vercel",
+              // Auto-registers server/middleware/* (the PWA install page +
+              // manifest + head-tag middleware). Nitro v3 defaults serverDir to
+              // false, so removing this silently unwires /?install=1 on deploys.
+              serverDir: "./server",
+            }),
+          ]
       : []),
     viteReact(),
   ],

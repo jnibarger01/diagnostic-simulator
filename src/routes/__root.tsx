@@ -1,7 +1,7 @@
 import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
-import { APP_NAME } from "@/lib/app";
+import { APP_NAME, publicUrl } from "@/lib/app";
 import appCss from "../styles.css?url";
 
 export const Route = createRootRoute({
@@ -14,7 +14,7 @@ export const Route = createRootRoute({
       { name: "description", content: "Automotive differential diagnosis engine with a causal simulator. Ranked hypotheses, evidence ledger, next-best test — not a parts wizard." },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/svg+xml", href: publicUrl("favicon.svg") },
       { rel: "stylesheet", href: appCss },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
@@ -22,8 +22,8 @@ export const Route = createRootRoute({
         rel: "stylesheet",
         href: "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap",
       },
-      { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "manifest", href: publicUrl("__grok/manifest.webmanifest") },
+      { rel: "apple-touch-icon", href: publicUrl("__grok/icon-180.png") },
     ],
   }),
   component: () => (
