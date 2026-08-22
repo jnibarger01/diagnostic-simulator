@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Diagnostic Decision Lab",
+      "hasCanvas": false,
+      "bodyTextLen": 428,
+      "bodyTextHash": "c8adca5bad2ffe79671aec55d44c253659e6937f62d2b3324fcbce193558c31f",
+      "bodyTextPrefix": "DIAGNOSTIC DECISION LAB ASSISTANT Diagnose Sessions Simulator To",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Diagnostic Decision Lab",
+      "hasCanvas": false,
+      "bodyTextLen": 428,
+      "bodyTextHash": "c8adca5bad2ffe79671aec55d44c253659e6937f62d2b3324fcbce193558c31f",
+      "bodyTextPrefix": "DIAGNOSTIC DECISION LAB ASSISTANT Diagnose Sessions Simulator To",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

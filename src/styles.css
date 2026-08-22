@@ -1,0 +1,94 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #08090b;
+  --color-surface: #101214;
+  --color-elevated: #171a1e;
+  --color-panel: #12151a;
+  --color-fg: #e6e8ea;
+  --color-muted: #8b929a;
+  --color-subtle: #5e656d;
+  --color-border: #2a2e34;
+  --color-accent: #c5cdd6;
+  --color-accent-fg: #08090b;
+  --color-data: #8ec9c0;
+  --color-ok: #6fbf9a;
+  --color-warn: #c9a36a;
+  --color-fault: #d16b6b;
+  --color-mil: #e24b4b;
+  --font-sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-size-micro: 0.6875rem;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow-border: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+  }
+  body {
+    font-family: var(--font-sans);
+  }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.led {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.led-ok {
+  background: var(--color-ok);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--color-ok) 70%, transparent);
+}
+.led-warn {
+  background: var(--color-warn);
+}
+.led-fault {
+  background: var(--color-fault);
+  box-shadow: 0 0 8px color-mix(in oklab, var(--color-fault) 70%, transparent);
+}
+.led-off {
+  background: var(--color-subtle);
+}
+
+.scope-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in oklab, var(--color-data) 12%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklab, var(--color-data) 12%, transparent) 1px, transparent 1px);
+  background-size: 10% 20%;
+}
