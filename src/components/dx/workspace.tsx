@@ -222,6 +222,26 @@ function HypDetail({ h }: { h: Hypothesis }) {
       <Row k="More likely when" items={h.moreLikelyWhen} />
       <Row k="Less likely when" items={h.lessLikelyWhen} />
       <div className="sm:col-span-2">
+        <dt className="text-subtle">Confirmation criteria</dt>
+        <dd className="space-y-1">
+          {h.criteria.confirmation.map((c) => (
+            <div key={c.id} className={c.satisfied ? "text-ok" : "text-muted"}>
+              {c.satisfied ? "✓" : "○"} {c.description}{c.satisfied ? ` · ${c.evidenceIds.length} evidence item${c.evidenceIds.length === 1 ? "" : "s"}` : " · missing"}
+            </div>
+          ))}
+        </dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-subtle">Refutation criteria</dt>
+        <dd className="space-y-1">
+          {h.criteria.refutation.map((c) => (
+            <div key={c.id} className={c.satisfied ? "text-warn" : "text-muted"}>
+              {c.satisfied ? "!" : "○"} {c.description}{c.satisfied ? " · ruled out" : " · not observed"}
+            </div>
+          ))}
+        </dd>
+      </div>
+      <div className="sm:col-span-2">
         <dt className="text-subtle">Confirm</dt>
         <dd>{h.confirmTest}</dd>
       </div>

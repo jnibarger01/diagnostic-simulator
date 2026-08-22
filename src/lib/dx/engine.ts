@@ -35,7 +35,9 @@ import type {
   TestDef,
   VerificationPlan,
 } from "./types";
-import { LIKELIHOOD_LABEL, likelihoodRank } from "./types";
+import { LIKELIHOOD_LABEL, likelihoodRank, type DiagnosticCriterion } from "./types";
+import { defaultKnowledgeProvider, type DiagnosticKnowledgeProvider } from "./providers";
+import { criteriaForFault, evaluateCriteria } from "./criteria";
 
 function band(score: number): Likelihood {
   if (score >= 8) return "very_high";
@@ -46,8 +48,9 @@ function band(score: number): Likelihood {
 }
 
 function confidence(h: Hypothesis, evidence: Evidence[]): Hypothesis["evidenceConfidence"] {
-  const tech = evidence.filter((e) => e.supports.includes(h.id) && e.source !== "customer" && e.source !== "service_history" && e.source !== "previous_repair");
-  const cust = evidence.filter((e) => e.supports.includes(h.id));
+  const supports = (e: Evidence) => e.supports.includes(h.id) || e.tags.some((tag) => (TAG_WEIGHTS[tag]?.[h.id] ?? 0) > 0);
+  const tech = evidence.filter((e) => supports(e) && e.source !== "customer" && e.source !== "service_history" && e.source !== "previous_repair");
+  const cust = evidence.filter(supports);
   if (tech.length >= 2) return "high";
   if (tech.length === 1) return "medium";
   if (cust.length >= 2) return "low";
@@ -59,10 +62,6 @@ function applyWeights(scores: Record<string, number>, weights: Record<string, nu
   for (const [id, d] of Object.entries(weights)) {
     scores[id] = (scores[id] ?? 0) + d * scale;
   }
-}
-
-function templateById(id: string): FaultTemplate | undefined {
-  return FAULTS.find((f) => f.id === id);
 }
 
 function scoreSession(session: DiagnosticSession): Record<string, number> {
@@ -79,6 +78,15 @@ function scoreSession(session: DiagnosticSession): Record<string, number> {
     for (const tag of ev.tags) applyWeights(scores, TAG_WEIGHTS[tag], scale);
     if (ev.type === "dtc" && ev.structuredValue && typeof ev.structuredValue.value === "string") {
       applyWeights(scores, DTC_CODE_WEIGHTS[ev.structuredValue.value], scale);
+    }
+    for (const f of FAULTS) {
+      const criteria = criteriaForFault(f.id);
+      const matches = (criterion: DiagnosticCriterion) => {
+        const m = criterion.match;
+        return (!m.allTags || m.allTags.every((tag) => ev.tags.includes(tag))) && (!m.anyTags?.length || m.anyTags.some((tag) => ev.tags.includes(tag)));
+      };
+      if (criteria.confirmation.some(matches)) scores[f.id] = (scores[f.id] ?? 0) + 6 * scale;
+      if (criteria.refutation.some(matches)) scores[f.id] = (scores[f.id] ?? 0) - 6 * scale;
     }
   }
 
@@ -105,8 +113,8 @@ function buildHypothesis(t: FaultTemplate, score: number, evidence: Evidence[]):
     else if (c > s && c > 0) contradicting.push(ev.observation);
   }
   const likelihood = band(score);
-  let status: Hypothesis["status"] = "active";
-  if (likelihood === "very_low" && contradicting.length) status = "ruled_out";
+  const criteria = evaluateCriteria(evidence, t.id);
+  const status: Hypothesis["status"] = criteria.anyRefutationSatisfied ? "ruled_out" : "active";
   const hyp: Hypothesis = {
     id: t.id,
     systemId: t.systemId,
@@ -123,6 +131,7 @@ function buildHypothesis(t: FaultTemplate, score: number, evidence: Evidence[]):
     lessLikelyWhen: t.lessLikelyWhen,
     confirmTest: t.confirmTest,
     refuteTest: t.refuteTest,
+    criteria,
     testable: true,
     testCostUsd: t.testCostUsd,
     testHours: t.testHours,
@@ -130,9 +139,7 @@ function buildHypothesis(t: FaultTemplate, score: number, evidence: Evidence[]):
     status,
   };
   hyp.evidenceConfidence = confidence(hyp, evidence);
-  if (hyp.likelihood === "very_high" && hyp.evidenceConfidence === "high" && !hyp.contradicting.length) {
-    hyp.status = "confirmed";
-  }
+  if (hyp.criteria.allRequiredConfirmationSatisfied && !hyp.criteria.anyRefutationSatisfied) hyp.status = "confirmed";
   return hyp;
 }
 
@@ -466,19 +473,22 @@ function seedEvidence(input: IntakeInput, tags: string[]): Evidence[] {
   return ev;
 }
 
-export function analyze(session: DiagnosticSession, trigger = "reanalyze"): DiagnosticSession {
-  const scores = scoreSession(session);
-  const templates = relevantFaults(session);
+export function analyze(session: DiagnosticSession, trigger = "reanalyze", provider: DiagnosticKnowledgeProvider = defaultKnowledgeProvider): DiagnosticSession {
+  const retrieved = provider.retrieveEvidence({ vehicle: session.vehicle, faultIds: session.hypotheses.map((h) => h.id), query: session.concern });
+  const mergedEvidence = [...session.evidence, ...retrieved.filter((ev) => !session.evidence.some((existing) => existing.id === ev.id))];
+  const working = mergedEvidence.length === session.evidence.length ? session : { ...session, evidence: mergedEvidence };
+  const scores = scoreSession(working);
+  const templates = relevantFaults(working);
   let hyps = templates
-    .map((t) => buildHypothesis(t, scores[t.id] ?? 0, session.evidence))
+    .map((t) => buildHypothesis(t, scores[t.id] ?? 0, working.evidence))
     .sort((a, b) => b.score - a.score || likelihoodRank(a.likelihood) - likelihoodRank(b.likelihood));
 
   hyps = hyps.filter((h, i) => i < 8 || h.likelihood !== "very_low" || h.supporting.length);
   hyps = hyps.slice(0, 10);
 
-  const evidence = linkEvidence(session.evidence, hyps);
+  const evidence = linkEvidence(working.evidence, hyps);
   const next: DiagnosticSession = {
-    ...session,
+    ...working,
     evidence,
     hypotheses: hyps,
     updatedAt: Date.now(),

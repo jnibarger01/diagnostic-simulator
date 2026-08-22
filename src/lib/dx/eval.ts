@@ -49,6 +49,9 @@ export function summarizeEval(session: DiagnosticSession, def: CaseDefinition): 
     testsRecommended: tests,
     unnecessaryTests: unnecessary,
     falseHypothesesRetained: falseKept,
+    testsToDiagnosis: hyp?.status === "confirmed" ? tests.length : null,
+    falseConfirmation: session.hypotheses.some((h) => h.id !== hid && h.status === "confirmed"),
+    unsafeRecommendation: Boolean(session.nextAction?.safety),
     log,
     at: Date.now(),
   };

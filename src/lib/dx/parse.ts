@@ -33,6 +33,11 @@ const TAG_PATTERNS: { re: RegExp; tags: string[] }[] = [
   { re: /usb (port|outlet)|dash cam/i, tags: ["aftermarket"] },
   { re: /glove box|dome light|trunk light/i, tags: ["lamp_on_keyoff"] },
   { re: /not (initialized|calibrated)|never (initialized|calibrated)|no (init|cal)/i, tags: ["bsm_no_init"] },
+  { re: /misfire|p030[1-8]|shaking under load/i, tags: ["misfire"] },
+  { re: /rich|black smoke|fuel smell/i, tags: ["rich"] },
+  { re: /evap|purge|after refuel|hard start after filling/i, tags: ["evap"] },
+  { re: /blower|air conditioning|heater fan|hvac/i, tags: ["hvac"] },
+  { re: /voltage drop|ground strap|power feed|electrical glitch/i, tags: ["intermittent_electrical"] },
 ];
 
 const SAFETY_PATTERNS: { re: RegExp; flag: string }[] = [
@@ -120,7 +125,7 @@ export interface PidReading {
 }
 
 const PID_LINE =
-  /^\s*(rpm|vss|speed|ect|coolant|iat|batt(?:ery)?|vpwr|stft|ltft|maf|map|tps|accel|app|load|fuel(?:\s*pressure)?|a\/?f|o2|lambda|timing|ign)\b[^0-9+\-]*([+\-]?\d+(?:\.\d+)?)\s*(%|psi|kpa|v|g\/s|mph|°f|f|rpm|°)?/i;
+  /^\s*(rpm|vss|speed|ect|coolant|iat|batt(?:ery)?|vpwr|stft|ltft|maf|map|tps|accel|app|load|fuel(?:\s*pressure)?|a\/?f|o2|lambda|timing|ign)\b[^0-9+-]*([+-]?\d+(?:\.\d+)?)\s*(%|psi|kpa|v|g\/s|mph|°f|f|rpm|°)?/i;
 
 const PID_KEY: Record<string, string> = {
   rpm: "rpm",

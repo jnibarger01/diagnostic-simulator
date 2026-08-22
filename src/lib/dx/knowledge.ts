@@ -30,6 +30,7 @@ export const SYSTEMS: { id: SystemId; label: string }[] = [
   { id: "parasitic", label: "Key-off draw" },
   { id: "adas", label: "ADAS / BSM" },
   { id: "starting", label: "Starting / battery" },
+  { id: "hvac", label: "HVAC / climate" },
 ];
 
 export const FAULTS: FaultTemplate[] = [
@@ -364,6 +365,16 @@ export const FAULTS: FaultTemplate[] = [
     testCostUsd: 0,
     testHours: 0.6,
   },
+  { id: "misfire_coil", systemId: "ignition", systemLabel: "Ignition", component: "Ignition coil / plug", failureMode: "Cylinder-specific spark energy loss", families: ["misfire", "stall"], moreLikelyWhen: ["P0301-P0306 or misfire counter follows a coil"], lessLikelyWhen: ["No cylinder-specific misfire evidence"], confirmTest: "Swap-test or scope the affected ignition circuit and confirm the misfire follows the component.", refuteTest: "Misfire does not follow the coil/plug and ignition output is verified.", missing: ["Cylinder-specific misfire counter", "Ignition output test"], testCostUsd: 0, testHours: 0.35 },
+  { id: "rich_condition", systemId: "fuel", systemLabel: "Fuel delivery", component: "Injector / fuel control", failureMode: "Excess fueling or fuel-control bias", families: ["rich", "fuel_trim"], moreLikelyWhen: ["Negative trims, black smoke, rich DTC"], lessLikelyWhen: ["Positive trims or confirmed intake leak"], confirmTest: "Verify negative trims and injector/fuel-pressure behavior with OEM information where needed.", refuteTest: "Fuel trims and exhaust oxygen behavior are not rich under the complaint.", missing: ["Fuel trims", "Injector balance or OEM fuel specification"], testCostUsd: 0, testHours: 0.4 },
+  { id: "evap_purge", systemId: "airflow", systemLabel: "Airflow / metering", component: "EVAP purge valve", failureMode: "Purge valve leaking or stuck open", families: ["evap", "fuel_trim"], moreLikelyWhen: ["Hard start after refueling, purge-related DTC"], lessLikelyWhen: ["Purge isolates without changing the symptom"], confirmTest: "Isolate or command purge and verify the symptom/trims change; use OEM procedure for valve tests.", refuteTest: "Purge isolation does not change the complaint and the valve passes the OEM test.", missing: ["Purge isolation result", "OEM purge test procedure"], testCostUsd: 0, testHours: 0.3 },
+  { id: "hvac_blower", systemId: "hvac", systemLabel: "HVAC / climate", component: "Blower motor / resistor", failureMode: "Blower power or speed-control fault", families: ["hvac", "intermittent_electrical"], moreLikelyWhen: ["Blower works on some speeds or changes with harness movement"], lessLikelyWhen: ["Power and ground remain stable at the motor"], confirmTest: "Measure blower power/ground and command response at the failure condition; OEM circuit information required.", refuteTest: "Power, ground, command, and motor response are stable through the failure.", missing: ["Blower power and ground", "HVAC wiring information"], testCostUsd: 0, testHours: 0.35 },
+  { id: "intermittent_ground", systemId: "power_ecu", systemLabel: "Power / ECU", component: "Ground or power distribution", failureMode: "Intermittent high resistance in a shared ground or feed", families: ["intermittent_electrical", "network", "stall"], moreLikelyWhen: ["Several systems reset together, voltage changes with load or movement"], lessLikelyWhen: ["Only one sensor signal fails while power remains stable"], confirmTest: "Perform a loaded voltage-drop test across the suspected ground/feed during the event.", refuteTest: "Loaded voltage-drop and feed monitoring remain stable through the event.", missing: ["Loaded voltage-drop result", "Feed monitoring during event"], testCostUsd: 0, testHours: 0.4 },
+  { id: "can_termination", systemId: "network", systemLabel: "Network / communication", component: "CAN termination / bus wiring", failureMode: "Bus termination or wiring fault", families: ["network", "intermittent_electrical"], moreLikelyWhen: ["Multiple modules drop offline and bus waveform is abnormal"], lessLikelyWhen: ["Only one module has an internal communication fault"], confirmTest: "Use the OEM network diagram and scope/isolate the bus to identify the wiring or termination fault.", refuteTest: "Bus waveform and isolation checks are normal with the fault present.", missing: ["OEM network diagram", "Bus isolation result"], testCostUsd: 0, testHours: 0.7 },
+  { id: "bsm_obstruction", systemId: "adas", systemLabel: "ADAS / BSM", component: "BSM radar obstruction", failureMode: "Sensor face or bumper area obstructed", families: ["adas"], moreLikelyWhen: ["Warning follows mud, ice, sticker, or bumper contamination"], lessLikelyWhen: ["Clean sensor with communication and calibration fault"], confirmTest: "Inspect and document the sensor face/bumper area, then verify operation after cleaning per OEM procedure.", refuteTest: "The sensor area is clean and the warning remains with no obstruction evidence.", missing: ["Sensor-area inspection", "OEM cleaning/verification procedure"], testCostUsd: 0, testHours: 0.2 },
+  { id: "charging_connection", systemId: "charging", systemLabel: "Charging", component: "Charging cable / ground connection", failureMode: "Intermittent high resistance in the charging path", families: ["charging", "intermittent_electrical"], moreLikelyWhen: ["Charging changes with cable movement or load"], lessLikelyWhen: ["Loaded voltage drop is stable"], confirmTest: "Measure loaded voltage drop on positive and ground paths during charging; OEM limits required.", refuteTest: "Loaded voltage drop remains within the OEM specification.", missing: ["Loaded charging-path voltage drop", "OEM charging specification"], testCostUsd: 0, testHours: 0.35 },
+  { id: "starter_control", systemId: "starting", systemLabel: "Starting / battery", component: "Starter control circuit", failureMode: "Intermittent starter relay or command circuit", families: ["no_crank", "intermittent_electrical"], moreLikelyWhen: ["Single click/no crank, command absent or changes with relay movement"], lessLikelyWhen: ["Starter receives a stable command and battery passes load test"], confirmTest: "Verify starter command, relay output, and voltage drop during the no-crank event.", refuteTest: "Command and loaded voltage-drop tests remain stable during the failure.", missing: ["Starter command during event", "Loaded starting-circuit test"], testCostUsd: 0, testHours: 0.35 },
+
 ];
 
 /** Additive score deltas applied when a tag is present. Never shown as percentages. */
@@ -421,6 +432,8 @@ export const TAG_WEIGHTS: Record<string, Record<string, number>> = {
   tach_zero: { ckp_sync: 3, ecm_power: 1, fuel_delivery: -2 },
   cluster_dies: { ecm_power: 4, ckp_sync: -1 },
   cluster_lives: { ecm_power: -2, ckp_sync: 1 },
+  misfire: { misfire_coil: 4, ignition: 3, fuel_delivery: 1 }, rich: { rich_condition: 5, af_sensor: 2 }, evap: { evap_purge: 5, pcv_purge: 1 }, hvac: { hvac_blower: 5 }, intermittent_electrical: { intermittent_ground: 4, can_termination: 3, charging_connection: 2, starter_control: 2 },
+  misfire_confirmed: { misfire_coil: 5 }, rich_confirmed: { rich_condition: 5 }, evap_confirmed: { evap_purge: 5 }, blower_confirmed: { hvac_blower: 5 }, ground_confirmed: { intermittent_ground: 5 }, can_termination_confirmed: { can_termination: 5 }, charging_connection_confirmed: { charging_connection: 5 }, starter_confirmed: { starter_control: 5 },
 };
 
 export const QUESTIONS: DiagnosticQuestion[] = [
@@ -836,6 +849,7 @@ export const DTC_CODE_WEIGHTS: Record<string, Record<string, number>> = {
   P0562: { battery_soh: 2, charging_fail: 2, parasitic_lamp: 1 },
   C1A10: { bsm_cal: 2, bsm_mount: 2, bsm_harness: 1, bsm_sensor: 1 },
   B2321: { bsm_cal: 2, bsm_harness: 2, bsm_sensor: 1 },
+  P0301: { misfire_coil: 3, ignition: 2 }, P0302: { misfire_coil: 3, ignition: 2 }, P0172: { rich_condition: 3, af_sensor: 2 }, P0441: { evap_purge: 3, pcv_purge: 1 }, U0129: { can_termination: 3, can_gateway: 2 }, B1500: { hvac_blower: 2 }, C1A11: { bsm_obstruction: 2, bsm_cal: 1 },
 };
 
 export function familyFor(tags: string[]): ComplaintFamily {
@@ -845,6 +859,11 @@ export function familyFor(tags: string[]): ComplaintFamily {
   if (tags.includes("lean") || tags.includes("rough_idle")) return "fuel_trim";
   if (tags.includes("no_crank") && !tags.includes("stall")) return "no_crank";
   if (tags.includes("charging_fail") && !tags.includes("stall")) return "charging";
+  if (tags.includes("misfire")) return "misfire";
+  if (tags.includes("rich")) return "rich";
+  if (tags.includes("evap") || tags.includes("after_refuel")) return "evap";
+  if (tags.includes("hvac")) return "hvac";
+  if (tags.includes("intermittent_electrical")) return "intermittent_electrical";
   if (tags.includes("no_start") || tags.includes("crank_no_start")) return "no_start";
   if (tags.includes("stall")) return "stall";
   return "generic";

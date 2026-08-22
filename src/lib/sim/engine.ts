@@ -3,7 +3,6 @@ import type {
   ActionLogEntry,
   CaseDefinition,
   DriveMode,
-  DtcRecord,
   FaultModel,
   FreezeFrame,
   KeyPosition,
@@ -487,7 +486,7 @@ export function replaceComponent(state: VehicleState, def: CaseDefinition, compo
 } {
   const replaced = state.replaced.includes(componentId) ? state.replaced : [...state.replaced, componentId];
   const correct = def.fault.correctComponentIds.includes(componentId);
-  let next = { ...state, replaced };
+  const next = { ...state, replaced };
   if (componentId === "battery") {
     next.soc = 0.95;
     next.batteryV = 12.62;

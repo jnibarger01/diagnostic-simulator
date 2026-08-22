@@ -6,9 +6,9 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 import {
   appNameFromHost,
-  createHeadInjector,
+  createHeadInjector as createHeadInjectorImpl,
   grokXCreatorHeadTags,
-  injectGrokPwaHead,
+  injectGrokPwaHead as injectGrokPwaHeadImpl,
   isDocumentPath,
   isInstallQuery,
   renderWebManifest,
@@ -18,6 +18,18 @@ import {
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
 const TEMPLATE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// These tests describe explicit request contexts. Keep the repository's real
+// site.json and public share-card files out of the default context so a local
+// app's branding cannot silently change their expectations.
+const HERMETIC_ROOT = mkdtempSync(join(tmpdir(), "grok-pwa-test-"));
+
+function injectGrokPwaHead(html, ctx = {}) {
+  return injectGrokPwaHeadImpl(html, { cwd: HERMETIC_ROOT, ...ctx });
+}
+
+function createHeadInjector(ctx = {}) {
+  return createHeadInjectorImpl({ cwd: HERMETIC_ROOT, ...ctx });
+}
 
 test("injects before </head>", () => {
   const out = injectGrokPwaHead("<html><head><title>x</title></head><body></body></html>");
@@ -409,4 +421,3 @@ test("vite plugin bakes og identity as a virtual module", () => {
   assert.match(plugin, /virtual:grok-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
 });
-

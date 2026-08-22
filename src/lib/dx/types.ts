@@ -20,6 +20,19 @@ export type EvidenceType = "symptom" | "condition" | "measurement" | "dtc" | "in
 
 export type Audience = "customer" | "technician";
 
+export type CriterionKind = "confirmation" | "refutation";
+
+export interface DiagnosticCriterion {
+  id: string;
+  description: string;
+  kind: CriterionKind;
+  required: boolean;
+  match: { allTags?: string[]; anyTags?: string[]; source?: EvidenceSource[]; type?: EvidenceType[]; observationIncludes?: string[]; structured?: { key: string; value?: string | number | boolean; units?: string }; requiresProviderEvidence?: boolean };
+}
+
+export interface CriterionState { id: string; description: string; satisfied: boolean; evidenceIds: string[]; required: boolean; }
+export interface HypothesisCriteria { confirmation: CriterionState[]; refutation: CriterionState[]; allRequiredConfirmationSatisfied: boolean; anyRefutationSatisfied: boolean; }
+
 export type SystemId =
   | "power_ecu"
   | "engine_position"
@@ -32,7 +45,10 @@ export type SystemId =
   | "charging"
   | "parasitic"
   | "adas"
-  | "starting";
+  | "starting"
+  | "evap"
+  | "hvac"
+  | "body_electrical";
 
 export type ComplaintFamily =
   | "stall"
@@ -43,6 +59,11 @@ export type ComplaintFamily =
   | "network"
   | "adas"
   | "charging"
+  | "misfire"
+  | "rich"
+  | "evap"
+  | "hvac"
+  | "intermittent_electrical"
   | "generic";
 
 export type SessionMode = "assistant" | "simulator";
@@ -90,6 +111,7 @@ export interface Hypothesis {
   lessLikelyWhen: string[];
   confirmTest: string;
   refuteTest: string;
+  criteria: HypothesisCriteria;
   testable: boolean;
   testCostUsd: number;
   testHours: number;
@@ -201,6 +223,9 @@ export interface EngineEval {
   testsRecommended: string[];
   unnecessaryTests: string[];
   falseHypothesesRetained: string[];
+  testsToDiagnosis: number | null;
+  falseConfirmation: boolean;
+  unsafeRecommendation: boolean;
   log: EngineEvalStep[];
   at: number;
 }
