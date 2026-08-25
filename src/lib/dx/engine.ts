@@ -46,8 +46,16 @@ function band(score: number): Likelihood {
 }
 
 function confidence(h: Hypothesis, evidence: Evidence[]): Hypothesis["evidenceConfidence"] {
-  const tech = evidence.filter((e) => e.supports.includes(h.id) && e.source !== "customer" && e.source !== "service_history" && e.source !== "previous_repair");
-  const cust = evidence.filter((e) => e.supports.includes(h.id));
+  const supports = (e: Evidence) => {
+    if (e.supports.includes(h.id)) return true;
+    let score = e.tags.reduce((sum, tag) => sum + (TAG_WEIGHTS[tag]?.[h.id] ?? 0), 0);
+    if (e.type === "dtc" && e.structuredValue && typeof e.structuredValue.value === "string") {
+      score += DTC_CODE_WEIGHTS[e.structuredValue.value]?.[h.id] ?? 0;
+    }
+    return score > 0.8;
+  };
+  const tech = evidence.filter((e) => supports(e) && e.source !== "customer" && e.source !== "service_history" && e.source !== "previous_repair");
+  const cust = evidence.filter(supports);
   if (tech.length >= 2) return "high";
   if (tech.length === 1) return "medium";
   if (cust.length >= 2) return "low";
@@ -106,7 +114,7 @@ function buildHypothesis(t: FaultTemplate, score: number, evidence: Evidence[]):
   }
   const likelihood = band(score);
   let status: Hypothesis["status"] = "active";
-  if (likelihood === "very_low" && contradicting.length) status = "ruled_out";
+  if (contradicting.length) status = "ruled_out";
   const hyp: Hypothesis = {
     id: t.id,
     systemId: t.systemId,
@@ -330,6 +338,7 @@ function verificationPlan(session: DiagnosticSession, top?: Hypothesis): Verific
 function repairRec(hyps: Hypothesis[]): RepairRecommendation | undefined {
   const top = hyps[0];
   if (!top || likelihoodRank(top.likelihood) > likelihoodRank("high")) return undefined;
+  if (top.evidenceConfidence === "none" || top.evidenceConfidence === "low") return undefined;
   const inspectFirst =
     top.id === "ckp_sync" || top.id === "ckp_connector"
       ? "Inspect CKP connector and circuit integrity before component replacement."
@@ -484,7 +493,7 @@ export function analyze(session: DiagnosticSession, trigger = "reanalyze"): Diag
     updatedAt: Date.now(),
     nextAction: null,
     lastMovement: movement(session.hypotheses, hyps, evidence[evidence.length - 1]),
-    status: session.status === "intake" ? "active" : session.status,
+    status: session.status === "intake" || session.status === "supported" ? "active" : session.status,
   };
   next.nextAction = pickNext(next, hyps);
   next.repair = repairRec(hyps);
