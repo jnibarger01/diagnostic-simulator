@@ -21,6 +21,7 @@ import {
 import type { DiagnosticSession, EngineEval, EvidenceSource, IntakeInput } from "@/lib/dx/types";
 import type { TestResult, VehicleState } from "@/lib/sim/types";
 import { loadEvals, loadSessions, saveEvals, saveSessions } from "./persist";
+import { createSessionBundle, parseSessionBundle } from "@/lib/dx/session-bundle";
 
 interface DxStore {
   sessions: DiagnosticSession[];
@@ -46,6 +47,8 @@ interface DxStore {
   ingestSimLive: (v: VehicleState) => void;
   recordEval: (def: CaseDefinition, trigger: string) => void;
   closeEval: (def: CaseDefinition) => EngineEval | null;
+  exportBundle: () => string;
+  importBundle: (raw: string) => number;
 }
 
 function persist(sessions: DiagnosticSession[], evals?: EngineEval[]) {
@@ -189,5 +192,16 @@ export const useDx = create<DxStore>((set, get) => ({
     persist(get().sessions, evals);
     set({ evals });
     return ev;
+  },
+
+  exportBundle: () => createSessionBundle(get().sessions),
+
+  importBundle: (raw) => {
+    const imported = parseSessionBundle(raw);
+    const existing = get().sessions;
+    const sessions = [...imported, ...existing.filter((session) => !imported.some((item) => item.id === session.id))].slice(0, 40);
+    persist(sessions);
+    set({ sessions, currentId: imported[0]?.id ?? get().currentId });
+    return imported.length;
   },
 }));

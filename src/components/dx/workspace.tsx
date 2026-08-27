@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/input";
 import { DTC_KB, QUESTIONS, TESTS } from "@/lib/dx/knowledge";
 import { LIKELIHOOD_LABEL, type DiagnosticSession, type Hypothesis } from "@/lib/dx/types";
+import { nextTabIndex } from "@/lib/dx/tabs";
 import { useDx } from "@/lib/store/dx-store";
 import { cn } from "@/lib/utils";
 
@@ -27,8 +28,11 @@ export function DxWorkspace({ id }: { id: string }) {
   const hydrate = useDx((s) => s.hydrate);
   const sessions = useDx((s) => s.sessions);
   const open = useDx((s) => s.open);
+  const exportBundle = useDx((s) => s.exportBundle);
+  const importBundle = useDx((s) => s.importBundle);
   const session = sessions.find((s) => s.id === id);
   const [tab, setTab] = useState<Tab>("Overview");
+  const [transferError, setTransferError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -70,11 +74,30 @@ export function DxWorkspace({ id }: { id: string }) {
         </div>
       ) : null}
       {session.lastMovement.length ? <MovementBanner session={session} /> : null}
-      <nav className="flex gap-1 overflow-x-auto border-b border-border px-2 py-1">
-        {TABS.map((t) => (
+      <SessionTransfer
+        exportBundle={exportBundle}
+        importBundle={importBundle}
+        error={transferError}
+        onError={setTransferError}
+      />
+      <nav className="flex gap-1 overflow-x-auto border-b border-border px-2 py-1" role="tablist" aria-label="Diagnostic workspace sections">
+        {TABS.map((t, index) => (
           <button
             key={t}
+            id={`dx-tab-${index}`}
+            role="tab"
+            type="button"
+            aria-selected={tab === t}
+            aria-controls="dx-tabpanel"
+            tabIndex={tab === t ? 0 : -1}
             onClick={() => setTab(t)}
+            onKeyDown={(event) => {
+              const next = nextTabIndex(index, event.key, TABS.length);
+              if (next === null) return;
+              event.preventDefault();
+              setTab(TABS[next]);
+              document.getElementById(`dx-tab-${next}`)?.focus();
+            }}
             className={cn(
               "h-10 shrink-0 rounded-sm px-3 text-xs",
               tab === t ? "bg-elevated text-fg" : "text-muted hover:text-fg",
@@ -84,7 +107,7 @@ export function DxWorkspace({ id }: { id: string }) {
           </button>
         ))}
       </nav>
-      <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
+      <div id="dx-tabpanel" role="tabpanel" aria-labelledby={`dx-tab-${TABS.indexOf(tab)}`} tabIndex={0} className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">
         {tab === "Overview" ? <Overview session={session} go={setTab} /> : null}
         {tab === "Differential" ? <DiffPanel session={session} /> : null}
         {tab === "Evidence" ? <EvidencePanel session={session} /> : null}
@@ -96,6 +119,55 @@ export function DxWorkspace({ id }: { id: string }) {
         {tab === "Verification" ? <VerifyPanel session={session} /> : null}
       </div>
     </Shell>
+  );
+}
+
+function SessionTransfer({
+  exportBundle,
+  importBundle,
+  error,
+  onError,
+}: {
+  exportBundle: () => string;
+  importBundle: (raw: string) => number;
+  error: string | null;
+  onError: (message: string | null) => void;
+}) {
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([exportBundle()], { type: "application/json" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "diagnostic-sessions.json";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 border-b border-border bg-surface px-3 py-2">
+      <span className="text-micro text-muted">Local-only session file</span>
+      <Button size="sm" variant="secondary" onClick={download}>Export sessions</Button>
+      <label className="inline-flex h-9 cursor-pointer items-center rounded-md bg-elevated px-3 text-xs text-fg ring-1 ring-border hover:bg-surface">
+        Import sessions
+        <input
+          className="sr-only"
+          type="file"
+          accept="application/json,.json"
+          onChange={async (event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (!file) return;
+            try {
+              const count = importBundle(await file.text());
+              onError(count ? null : "The bundle contained no sessions.");
+            } catch (cause) {
+              onError(cause instanceof Error ? cause.message : "Unable to import diagnostic sessions.");
+            }
+          }}
+        />
+      </label>
+      <span className="text-micro text-subtle">JSON bundles stay on this device unless you choose to share them.</span>
+      {error ? <span role="alert" className="text-micro text-fault">{error}</span> : null}
+    </div>
   );
 }
 
